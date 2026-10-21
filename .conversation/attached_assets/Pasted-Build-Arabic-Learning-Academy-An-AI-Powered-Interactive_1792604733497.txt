@@ -1,0 +1,137 @@
+Build Arabic Learning Academy — An AI-Powered Interactive Arabic Textbook
+
+I want to build a complete, professional, AI-powered Arabic language learning platform inspired by the educational functionality of interactive college language textbooks such as VHL Central.
+
+The goal is to recreate the depth and structure of the learning experience, not copy proprietary content, branding, or design assets.
+
+This must be a real, functional learning management system, not merely a static website or flashcard application.
+
+1. Educational Goals
+
+Create a structured Arabic language curriculum for English-speaking students, beginning with zero prior knowledge and progressing through A1, A2, B1, B2, and advanced lessons.
+
+Teach Modern Standard Arabic (MSA) as the default. Prepare an optional Iraqi Arabic dialect mode that clearly distinguishes dialect expressions from MSA.
+
+Use authentic, original Arabic educational content, accurate English translations, pronunciation guidance, and clear grammar explanations.
+
+2. Interactive Textbook
+
+Create a full textbook dashboard with units, chapters, individual lessons, vocabulary pages, grammar explanations, dialogues, pronunciation activities, cultural readings, quizzes, homework, and tests.
+
+Each lesson should support this learning sequence:
+
+Learn → Listen → Understand → Practice → Review → Quiz → Feedback → Mastery.
+
+Provide Previous Lesson, Next Lesson, Save, Submit, Retry, and Review Answers controls.
+
+Show completion status and progress for each lesson.
+
+3. Interactive Activities
+
+Build reusable, fully functional exercise components for:
+
+Multiple-choice questions; fill-in-the-blanks; dropdown selection; matching; word ordering; sentence building; conversation sequencing; true/false questions; image identification; listening comprehension; dictation; Arabic spelling; and vocabulary translation.
+
+Support audio playback, replay, optional transcripts, question-by-question correction, detailed feedback, scores, and unlimited practice attempts.
+
+Provide explanations in English for incorrect answers.
+
+4. Arabic-Specific Features
+
+Implement full RTL support, high-quality Arabic fonts, and correct rendering of connected Arabic letters.
+
+Support optional Arabic diacritics (tashkeel), including exercises focused on vowel marks.
+
+Develop pronunciation activities for Arabic letters and words, with audio examples and recording functionality.
+
+Add Arabic handwriting and letter recognition lessons, including initial, medial, final, and isolated letter forms.
+
+For beginners, provide optional transliteration, which students can disable as they progress.
+
+Validate Arabic answers carefully. Do not incorrectly penalize optional diacritics when the exercise does not require them.
+
+5. AI Living Study Guide
+
+Allow an instructor or administrator to upload original lesson notes, PDFs, documents, and authorized transcripts.
+
+Use AI to extract vocabulary, grammar rules, concepts, example sentences, and potential test questions.
+
+Place AI-generated material in a Review Queue with its exact source excerpt.
+
+The administrator must be able to approve, edit, merge, tag, or reject content before publication.
+
+Only approved content enters the student-facing lesson library.
+
+Prevent unsupported explanations from being presented as verified source facts.
+
+6. Flashcards and Adaptive Learning
+
+Create interactive Arabic/English flashcards with audio pronunciation.
+
+Track known and missed vocabulary, schedule spaced-repetition reviews, and generate personalized quizzes based on weak areas.
+
+Create a student learning dashboard showing completed lessons, quiz results, vocabulary mastery, review reminders, and activity history.
+
+Persist all progress across devices and sessions.
+
+7. Student and Instructor Accounts
+
+Provide two user roles: Student and Instructor/Admin.
+
+Students can enroll, study, complete exercises, and access their own progress.
+
+Instructors can create lessons, edit exercise questions, approve AI-generated material, review student progress, and manage assignments.
+
+Use secure authentication and enforce role permissions on the server.
+
+Before publishing, ensure that student information, private notes, and administrative tools are inaccessible to unauthenticated users.
+
+8. Technical Architecture
+
+Build a full-stack responsive application using React, TypeScript, Tailwind CSS, and a suitable backend.
+
+Use PostgreSQL to store users, lessons, activities, answers, review items, flashcards, scores, and progress.
+
+Use secure server-side AI integrations for content generation. Never expose API keys in the browser.
+
+Use reliable Arabic-capable audio services when available. If audio services are not configured, show clear setup instructions instead of pretending the feature works.
+
+Support a complete JSON backup export and restore workflow.
+
+9. Design
+
+Create an original, accessible, modern academic interface inspired by the usability of professional digital language textbooks.
+
+Use a clear left sidebar for navigation, a central lesson workspace, an assignment dashboard, readable Arabic typography, and an uncluttered interface.
+
+Support responsive desktop, tablet, and mobile layouts.
+
+Provide English instructions and Arabic learning content with proper mixed-direction text handling.
+
+10. First Working Version
+
+Start with a complete vertical slice rather than implementing everything superficially.
+
+Build the following first:
+
+A working home dashboard.
+
+One complete beginner unit titled “Arabic Greetings and Introductions.”
+
+Original lessons covering Arabic greetings, basic pronouns, introductory vocabulary, and a short conversation.
+
+At least six working activity types, including listening and dictation if audio is available.
+
+A functional answer-checking and progress-saving system.
+
+A small AI Review Queue using original demo notes.
+
+A searchable flashcard library.
+
+Create sample content and data so I can fully test the experience immediately.
+
+After finishing the first version, explain what works, what remains planned, and how to test each feature.
+
+Do not use copyrighted VHL content or screenshots as application assets.
+
+Plan the implementation in stages, use reusable components, and obtain approval before starting expensive external integrations.

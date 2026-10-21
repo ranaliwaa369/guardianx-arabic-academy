@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Arabic Learning Academy"
+description = "An interactive Modern Standard Arabic learning platform for English-speaking students, starting with a complete beginner unit, guided practice, saved progress, flashcards, and instructor-reviewed learning materials."
+version = "1.0.0"
+id = "artifacts/arabic-academy"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18154
+
+[services.development]
+run = "pnpm --filter @workspace/arabic-academy run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/arabic-academy", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/arabic-academy/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18154"
+BASE_PATH = "/"
