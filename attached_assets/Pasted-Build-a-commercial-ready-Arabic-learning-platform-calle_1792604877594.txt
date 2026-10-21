@@ -1,0 +1,45 @@
+Build a commercial-ready Arabic learning platform called “GuardianX Arabic Academy” owned and branded by GuardianX LLC.
+
+This is an AI-powered interactive Arabic textbook and learning management system for English-speaking students. It must be designed so it can launch as a free beta/trial first and later become a paid subscription product without rebuilding the core application.
+
+Branding:
+- Product name: GuardianX Arabic Academy
+- Use a professional GuardianX / GX identity throughout the app.
+- Create a simple GX placeholder app icon and favicon for now.
+- Keep all visual design original and do not copy VHL Central or any proprietary textbook branding, screenshots, layouts, or copyrighted content.
+
+Access and commercialization:
+- Require user accounts and secure login.
+- Support Student and Instructor/Admin roles.
+- Keep student content and admin tools inaccessible to unauthenticated users.
+- Architect the app for future Free Trial, Free, and Paid subscription tiers.
+- Do NOT connect a payment provider yet. Instead, create a clean billing/subscription data model and placeholders so Stripe or another payment system can be added later.
+- Include fields for trial start date, trial expiration, subscription status, and plan type.
+- Admin should be able to grant or revoke access manually during the beta.
+- Make the product suitable for future commercial sale by GuardianX LLC.
+
+Start with a complete working vertical slice:
+1. Home/dashboard.
+2. One beginner unit: “Arabic Greetings and Introductions.”
+3. Original lessons covering greetings, basic pronouns, introductory vocabulary, and a short Arabic conversation.
+4. Modern Standard Arabic as the default, with a clearly labeled optional Iraqi Arabic section.
+5. Full Arabic RTL support and high-quality Arabic typography.
+6. Optional transliteration and tashkeel controls.
+7. At least six interactive activity types.
+8. Answer checking, scores, retries, and saved progress.
+9. Searchable Arabic-English flashcards.
+10. A small AI Review Queue with source excerpts where generated material must be approved, edited, merged, tagged, or rejected before publication.
+11. PostgreSQL persistence for users, lessons, activities, review items, flashcards, scores, and progress.
+12. Responsive desktop, tablet, and mobile design.
+13. A JSON backup/export feature.
+14. Demo data so every major feature can be tested immediately.
+
+Use React, TypeScript, Tailwind CSS, PostgreSQL, and secure server-side architecture.
+
+Build the smallest useful working version first. Do not attempt expensive external integrations yet. Before adding paid APIs, audio services, or payment processing, explain what would be required and ask for approval.
+
+At the end, explain:
+- what currently works,
+- how to test every feature,
+- what remains planned,
+- and how this architecture can later support a free trial and paid subscriptions.

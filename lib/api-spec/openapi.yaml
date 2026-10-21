@@ -3,13 +3,23 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Arabic Academy learning, progress, vocabulary, and instructor review API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: academy
+    description: Authenticated student learning and progress
+  - name: flashcards
+    description: Search and spaced-repetition vocabulary
+  - name: instructor
+    description: Instructor-only review queue
+  - name: preferences
+    description: Authenticated learner display preferences
+  - name: admin
+    description: Administrator access management and backups
 paths:
   /healthz:
     get:
@@ -24,6 +34,304 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /academy/dashboard:
+    get:
+      operationId: getAcademyDashboard
+      tags: [academy]
+      summary: Get the signed-in student's dashboard summary
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AcademyDashboard"
+        "401":
+          description: Sign-in required
+  /academy/unit:
+    get:
+      operationId: getAcademyUnit
+      tags: [academy]
+      summary: Get the original beginner greetings unit and its lesson activities
+      responses:
+        "200":
+          description: Beginner unit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AcademyUnit"
+        "401":
+          description: Sign-in required
+  /academy/preferences:
+    get:
+      operationId: getAcademyPreferences
+      tags: [preferences]
+      summary: Get the signed-in learner's language display preferences
+      responses:
+        "200":
+          description: Display preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AcademyPreferences"
+        "401":
+          description: Sign-in required
+    patch:
+      operationId: updateAcademyPreferences
+      tags: [preferences]
+      summary: Save transliteration and tashkeel display preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AcademyPreferencesUpdate"
+      responses:
+        "200":
+          description: Updated display preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AcademyPreferences"
+        "400":
+          description: Invalid preferences
+        "401":
+          description: Sign-in required
+  /academy/progress:
+    get:
+      operationId: listLessonProgress
+      tags: [academy]
+      summary: Get the signed-in student's lesson progress
+      responses:
+        "200":
+          description: Progress for the signed-in student
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LessonProgress"
+        "401":
+          description: Sign-in required
+  /academy/progress/{lessonId}:
+    put:
+      operationId: saveLessonProgress
+      tags: [academy]
+      summary: Save a lesson step or completion state
+      parameters:
+        - in: path
+          name: lessonId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LessonProgressInput"
+      responses:
+        "200":
+          description: Saved lesson progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LessonProgress"
+        "400":
+          description: Invalid progress update
+        "401":
+          description: Sign-in required
+  /academy/activities/answer:
+    post:
+      operationId: submitActivityAnswer
+      tags: [academy]
+      summary: Check an answer and save the attempt
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActivityAnswerInput"
+      responses:
+        "200":
+          description: Checked answer with feedback
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivityAnswerResult"
+        "400":
+          description: Invalid activity answer
+        "401":
+          description: Sign-in required
+        "404":
+          description: Activity not found
+  /academy/flashcards:
+    get:
+      operationId: listAcademyFlashcards
+      tags: [flashcards]
+      summary: Search the beginner vocabulary library
+      parameters:
+        - in: query
+          name: q
+          required: false
+          schema:
+            type: string
+            default: ""
+      responses:
+        "200":
+          description: Matching vocabulary cards
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AcademyFlashcard"
+        "401":
+          description: Sign-in required
+  /academy/flashcards/{flashcardId}/review:
+    post:
+      operationId: reviewAcademyFlashcard
+      tags: [flashcards]
+      summary: Record a flashcard review and schedule the next review
+      parameters:
+        - in: path
+          name: flashcardId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FlashcardReviewInput"
+      responses:
+        "200":
+          description: Updated flashcard review state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FlashcardReviewResult"
+        "401":
+          description: Sign-in required
+        "404":
+          description: Flashcard not found
+  /academy/review-queue:
+    get:
+      operationId: listInstructorReviewItems
+      tags: [instructor]
+      summary: List unpublished instructor review items
+      responses:
+        "200":
+          description: Review queue
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InstructorReviewItem"
+        "401":
+          description: Sign-in required
+        "403":
+          description: Instructor access required
+  /academy/review-queue/{reviewItemId}:
+    patch:
+      operationId: updateInstructorReviewItem
+      tags: [instructor]
+      summary: Edit, tag, merge, approve, or reject a review item
+      parameters:
+        - in: path
+          name: reviewItemId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InstructorReviewUpdate"
+      responses:
+        "200":
+          description: Updated review item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstructorReviewItem"
+        "400":
+          description: Invalid review update
+        "401":
+          description: Sign-in required
+        "403":
+          description: Instructor access required
+        "404":
+          description: Review item not found
+  /academy/admin/users:
+    get:
+      operationId: listAdminAcademyUsers
+      tags: [admin]
+      summary: List academy accounts and their access and subscription status
+      responses:
+        "200":
+          description: Academy accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminAcademyUser"
+        "401":
+          description: Sign-in required
+        "403":
+          description: Administrator access required
+  /academy/admin/users/{userId}:
+    patch:
+      operationId: updateAdminAcademyUser
+      tags: [admin]
+      summary: Update a learner's role, access override, or trial status
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminAcademyUserUpdate"
+      responses:
+        "200":
+          description: Updated account access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminAcademyUser"
+        "400":
+          description: Invalid access update
+        "401":
+          description: Sign-in required
+        "403":
+          description: Administrator access required
+        "404":
+          description: Account not found
+  /academy/admin/export:
+    get:
+      operationId: getAdminAcademyExport
+      tags: [admin]
+      summary: Download a JSON backup of academy content and learning data
+      responses:
+        "200":
+          description: JSON academy backup
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminAcademyExport"
+        "401":
+          description: Sign-in required
+        "403":
+          description: Administrator access required
 components:
   schemas:
     HealthStatus:
@@ -33,4 +341,415 @@ components:
           type: string
       required:
         - status
+    AcademyDashboard:
+      type: object
+      required: [role, displayName, progressPercent, completedLessons, totalLessons, currentStreakDays, nextLessonId, dueReviews, access]
+      properties:
+        role:
+          type: string
+          enum: [student, instructor, admin]
+        displayName:
+          type: ["string", "null"]
+        progressPercent:
+          type: integer
+        completedLessons:
+          type: integer
+        totalLessons:
+          type: integer
+        currentStreakDays:
+          type: integer
+        nextLessonId:
+          type: ["string", "null"]
+        dueReviews:
+          type: integer
+        access:
+          $ref: "#/components/schemas/AcademyAccessSummary"
+    AcademyUnit:
+      type: object
+      required: [id, title, level, description, culturalNote, lessons, vocabulary, dialectExamples]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        level:
+          type: string
+        description:
+          type: string
+        culturalNote:
+          type: string
+        lessons:
+          type: array
+          items:
+            $ref: "#/components/schemas/AcademyLesson"
+        vocabulary:
+          type: array
+          items:
+            $ref: "#/components/schemas/AcademyFlashcard"
+        dialectExamples:
+          type: array
+          items:
+            $ref: "#/components/schemas/AcademyDialectExample"
+    AcademyDialectExample:
+      type: object
+      required: [id, dialect, arabic, transliteration, english, usageNote]
+      properties:
+        id:
+          type: string
+        dialect:
+          type: string
+          enum: [iraqi]
+        arabic:
+          type: string
+        transliteration:
+          type: string
+        english:
+          type: string
+        usageNote:
+          type: string
+    AcademyAccessSummary:
+      type: object
+      required: [planType, subscriptionStatus, accessOverride, hasAccess, trialStartedAt, trialExpiresAt]
+      properties:
+        planType:
+          type: string
+          enum: [beta, free, trial, paid]
+        subscriptionStatus:
+          type: string
+          enum: [beta, trialing, active, inactive, past_due, canceled, expired]
+        accessOverride:
+          type: string
+          enum: [inherit, grant, revoke]
+        hasAccess:
+          type: boolean
+        trialStartedAt:
+          type: ["string", "null"]
+          format: date-time
+        trialExpiresAt:
+          type: ["string", "null"]
+          format: date-time
+    AcademyPreferences:
+      type: object
+      required: [showTransliteration, showTashkeel]
+      properties:
+        showTransliteration:
+          type: boolean
+        showTashkeel:
+          type: boolean
+    AcademyPreferencesUpdate:
+      type: object
+      required: [showTransliteration, showTashkeel]
+      properties:
+        showTransliteration:
+          type: boolean
+        showTashkeel:
+          type: boolean
+    AdminAcademyUser:
+      type: object
+      required: [userId, email, displayName, role, planType, subscriptionStatus, accessOverride, hasAccess, trialStartedAt, trialExpiresAt, billingProvider, externalCustomerId, externalSubscriptionId, createdAt, lastSeenAt]
+      properties:
+        userId:
+          type: string
+        email:
+          type: ["string", "null"]
+        displayName:
+          type: ["string", "null"]
+        role:
+          type: string
+          enum: [student, instructor, admin]
+        planType:
+          type: string
+          enum: [beta, free, trial, paid]
+        subscriptionStatus:
+          type: string
+          enum: [beta, trialing, active, inactive, past_due, canceled, expired]
+        accessOverride:
+          type: string
+          enum: [inherit, grant, revoke]
+        hasAccess:
+          type: boolean
+        trialStartedAt:
+          type: ["string", "null"]
+          format: date-time
+        trialExpiresAt:
+          type: ["string", "null"]
+          format: date-time
+        billingProvider:
+          type: ["string", "null"]
+        externalCustomerId:
+          type: ["string", "null"]
+        externalSubscriptionId:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        lastSeenAt:
+          type: ["string", "null"]
+          format: date-time
+    AdminAcademyUserUpdate:
+      type: object
+      required: [role, planType, subscriptionStatus, accessOverride, trialStartedAt, trialExpiresAt]
+      properties:
+        role:
+          type: string
+          enum: [student, instructor]
+        planType:
+          type: string
+          enum: [beta, free, trial, paid]
+        subscriptionStatus:
+          type: string
+          enum: [beta, trialing, active, inactive, past_due, canceled, expired]
+        accessOverride:
+          type: string
+          enum: [inherit, grant, revoke]
+        trialStartedAt:
+          type: ["string", "null"]
+          format: date-time
+        trialExpiresAt:
+          type: ["string", "null"]
+          format: date-time
+    AdminAcademyExport:
+      type: object
+      required: [schemaVersion, exportedAt, units, lessons, activities, flashcards, dialectExamples, reviewItems, users, progress, attempts, flashcardReviews]
+      properties:
+        schemaVersion:
+          type: integer
+        exportedAt:
+          type: string
+          format: date-time
+        units:
+          type: array
+          items:
+            $ref: "#/components/schemas/BackupRecord"
+        lessons:
+          type: array
+          items:
+            $ref: "#/components/schemas/BackupRecord"
+        activities:
+          type: array
+          items:
+            $ref: "#/components/schemas/BackupRecord"
+        flashcards:
+          type: array
+          items:
+            $ref: "#/components/schemas/BackupRecord"
+        dialectExamples:
+          type: array
+          items:
+            $ref: "#/components/schemas/BackupRecord"
+        reviewItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/BackupRecord"
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/BackupRecord"
+        progress:
+          type: array
+          items:
+            $ref: "#/components/schemas/BackupRecord"
+        attempts:
+          type: array
+          items:
+            $ref: "#/components/schemas/BackupRecord"
+        flashcardReviews:
+          type: array
+          items:
+            $ref: "#/components/schemas/BackupRecord"
+    BackupRecord:
+      type: object
+      additionalProperties: true
+    AcademyLesson:
+      type: object
+      required: [id, title, description, sequence, durationMinutes, section, content, transliteration, activities]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        sequence:
+          type: integer
+        durationMinutes:
+          type: integer
+        section:
+          type: string
+        content:
+          type: string
+        transliteration:
+          type: ["string", "null"]
+        activities:
+          type: array
+          items:
+            $ref: "#/components/schemas/AcademyActivity"
+    AcademyActivity:
+      type: object
+      required: [id, lessonId, type, prompt, instructions, arabicPrompt, choices, wordBank, leftOptions, rightOptions, audioAvailable, audioNotice]
+      properties:
+        id:
+          type: string
+        lessonId:
+          type: string
+        type:
+          type: string
+          enum: [multipleChoice, fillBlank, matching, wordOrder, trueFalse, translation, conversationSequence]
+        prompt:
+          type: string
+        instructions:
+          type: string
+        arabicPrompt:
+          type: ["string", "null"]
+        choices:
+          type: array
+          items:
+            type: string
+        wordBank:
+          type: array
+          items:
+            type: string
+        leftOptions:
+          type: array
+          items:
+            type: string
+        rightOptions:
+          type: array
+          items:
+            type: string
+        audioAvailable:
+          type: boolean
+        audioNotice:
+          type: ["string", "null"]
+    LessonProgress:
+      type: object
+      required: [lessonId, currentStep, completed, latestScore, updatedAt]
+      properties:
+        lessonId:
+          type: string
+        currentStep:
+          type: string
+          enum: [learn, listen, understand, practice, review, quiz, feedback, mastery]
+        completed:
+          type: boolean
+        latestScore:
+          type: ["integer", "null"]
+        updatedAt:
+          type: ["string", "null"]
+          format: date-time
+    LessonProgressInput:
+      type: object
+      required: [currentStep, completed]
+      properties:
+        currentStep:
+          type: string
+          enum: [learn, listen, understand, practice, review, quiz, feedback, mastery]
+        completed:
+          type: boolean
+        latestScore:
+          type: ["integer", "null"]
+    ActivityAnswerInput:
+      type: object
+      required: [activityId, answer]
+      properties:
+        activityId:
+          type: string
+        answer:
+          type: string
+    ActivityAnswerResult:
+      type: object
+      required: [correct, score, feedback, correctAnswer, explanation, attemptNumber]
+      properties:
+        correct:
+          type: boolean
+        score:
+          type: integer
+        feedback:
+          type: string
+        correctAnswer:
+          type: string
+        explanation:
+          type: string
+        attemptNumber:
+          type: integer
+    AcademyFlashcard:
+      type: object
+      required: [id, arabic, transliteration, english, example, due, reviewCount, known]
+      properties:
+        id:
+          type: string
+        arabic:
+          type: string
+        transliteration:
+          type: string
+        english:
+          type: string
+        example:
+          type: string
+        due:
+          type: boolean
+        reviewCount:
+          type: integer
+        known:
+          type: boolean
+    FlashcardReviewInput:
+      type: object
+      required: [remembered]
+      properties:
+        remembered:
+          type: boolean
+    FlashcardReviewResult:
+      type: object
+      required: [flashcardId, reviewCount, known, nextReviewAt]
+      properties:
+        flashcardId:
+          type: string
+        reviewCount:
+          type: integer
+        known:
+          type: boolean
+        nextReviewAt:
+          type: string
+          format: date-time
+    InstructorReviewItem:
+      type: object
+      required: [id, title, contentType, sourceNoteTitle, sourceExcerpt, draftContent, tags, status, updatedAt]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        contentType:
+          type: string
+        sourceNoteTitle:
+          type: string
+        sourceExcerpt:
+          type: string
+        draftContent:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [pending, approved, rejected, merged]
+        updatedAt:
+          type: string
+          format: date-time
+    InstructorReviewUpdate:
+      type: object
+      required: [action, draftContent, tags, mergeIntoId]
+      properties:
+        action:
+          type: string
+          enum: [edit, approve, reject, merge]
+        draftContent:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        mergeIntoId:
+          type: ["string", "null"]
 

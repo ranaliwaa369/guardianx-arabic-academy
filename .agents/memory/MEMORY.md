@@ -1,0 +1,1 @@
+- [AI integration approval](ai-integration-approval.md) — Wait for explicit approval before connecting a costly external AI provider.
