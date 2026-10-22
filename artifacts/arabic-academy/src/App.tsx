@@ -11,15 +11,18 @@ import {
 } from 'lucide-react';
 import {
   getGetAcademyDashboardQueryKey, getListAcademyFlashcardsQueryKey,
-  getListInstructorReviewItemsQueryKey, getListLessonProgressQueryKey,
-  useGetAcademyDashboard, useGetAcademyUnit, useListAcademyFlashcards,
+  getGetAcademyPreferencesQueryKey, getGetAcademyUnitQueryKey, getGetAdminAcademyExportQueryKey,
+  getListAdminAcademyUsersQueryKey, getListInstructorReviewItemsQueryKey, getListLessonProgressQueryKey,
+  useGetAcademyDashboard, useGetAcademyPreferences, useGetAcademyUnit, useGetAdminAcademyExport,
+  useListAdminAcademyUsers, useListAcademyFlashcards,
   useListInstructorReviewItems, useListLessonProgress, useReviewAcademyFlashcard,
-  useSaveLessonProgress, useSubmitActivityAnswer, useUpdateInstructorReviewItem,
+  useSaveLessonProgress, useSubmitActivityAnswer, useUpdateAcademyPreferences, useUpdateAdminAcademyUser, useUpdateInstructorReviewItem,
 } from '@workspace/api-client-react';
-import type { AcademyActivity, AcademyFlashcard, AcademyLesson, InstructorReviewItem } from '@workspace/api-client-react';
+import type { AcademyActivity, AcademyFlashcard, AcademyLesson, AdminAcademyUser, AdminAcademyUserUpdate, InstructorReviewItem } from '@workspace/api-client-react';
 import { Link, Redirect, Route, Switch, Router as WouterRouter, useLocation, useParams } from 'wouter';
 import NotFound from '@/pages/not-found';
 import './index.css';
+import './academy.css';
 
 const queryClient = new QueryClient();
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -87,8 +90,8 @@ function cx(...classes: Array<string | false | null | undefined>) {
 
 function Brand({ inverse = false }: { inverse?: boolean }) {
   return <Link href="/" className={cx('brand', inverse && 'brand-inverse')} data-testid="link-brand-home">
-    <span className="brand-mark"><span className="arabic">ض</span></span>
-    <span className="brand-copy"><b>Bayt al-Lugha</b><small>THE ARABIC LEARNING HOUSE</small></span>
+    <span className="brand-mark gx-mark"><span>GX</span></span>
+    <span className="brand-copy"><b>GuardianX</b><small>ARABIC ACADEMY</small></span>
   </Link>;
 }
 
@@ -103,6 +106,8 @@ function TopNav() {
     <nav className={cx('public-nav-links', open && 'nav-open')}>
       <a href="#approach" onClick={() => setOpen(false)}>Our approach</a>
       <a href="#preview" onClick={() => setOpen(false)}>Course preview</a>
+      <Link href="/about-author" onClick={() => setOpen(false)}>Author</Link>
+      <Link href="/copyright" onClick={() => setOpen(false)}>Copyright</Link>
       <Link href="/sign-in" onClick={() => setOpen(false)}>Sign in</Link>
       <Link href="/sign-up" className="nav-cta" onClick={() => setOpen(false)}>Begin learning <ArrowRight size={15} /></Link>
     </nav>
@@ -111,9 +116,7 @@ function TopNav() {
 }
 
 function HomeRedirect() {
-  const { isLoaded, isSignedIn } = useAuth();
-  if (!isLoaded) return <div className="page-loading"><div className="loading-mark arabic">ض</div><span>Opening your study room…</span></div>;
-  return isSignedIn ? <Redirect to="/dashboard" /> : <LandingPage />;
+  return <LandingPage />;
 }
 
 function LandingPage() {
@@ -131,15 +134,20 @@ function LandingPage() {
         <div className="hero-proof"><div className="proof-avatars"><span>م</span><span>ن</span><span>ل</span></div><p><b>Made for complete beginners</b><br />No prior Arabic needed</p></div>
       </div>
       <div className="hero-art fade-up delay-2">
-        <div className="art-stamp">UNIT 01 <span>·</span> BEGIN HERE</div>
-        <div className="art-card">
-          <div className="art-ornament" aria-hidden="true">✧</div>
+        <div className="art-stamp">GUARDIANX ARABIC ACADEMY <span>·</span> BEGINNER</div>
+        <div className="art-card textbook-cover">
+          <div className="cover-kicker">A MODERN STANDARD ARABIC COURSE</div>
+          <div className="art-ornament" aria-hidden="true">GX</div>
+          <p className="cover-title">GuardianX<br />Arabic Academy</p>
+          <span className="cover-level">BEGINNER · LEVEL 01</span>
+          <div className="cover-divider" />
           <p className="art-label">YOUR FIRST WORD</p>
           <div className="art-arabic arabic" dir="rtl">السَّلَامُ عَلَيْكُمْ</div>
           <div className="art-rule"><span /></div>
           <p className="art-translit">as-salāmu ʿalaykum</p>
           <p className="art-translation">Peace be upon you</p>
           <span className="art-note">A greeting that carries a wish for peace.</span>
+          <div className="cover-credits"><span>Author <b>Rana Al Dahlake (رنا الدهلكي)</b></span><span>Publisher <b>GuardianX LLC</b></span></div>
         </div>
         <div className="floating-note note-top"><span className="note-icon"><Volume2 size={16} /></span><span><b>Follow each sound</b><small>Written pronunciation cues</small></span></div>
         <div className="floating-note note-bottom"><span className="note-check"><Check size={15} /></span><span><b>Say it with confidence</b><small>Practice, then remember</small></span></div>
@@ -173,7 +181,7 @@ function LandingPage() {
       </div>
     </section>
     <section className="closing-band"><div className="closing-mark arabic">أهلاً</div><div><p className="eyebrow">Your place is ready</p><h2 className="display">Begin with a greeting.</h2></div><Link className="button button-light" href="/sign-up">Create your free account <ArrowRight size={17} /></Link></section>
-    <footer className="site-footer"><Brand inverse /><p>Carefully guided Arabic, from the very first word.</p><span>© BAYT AL-LUGHA · ACADEMY</span></footer>
+    <footer className="site-footer"><Brand inverse /><p>Carefully guided Arabic, from the very first word.</p><div className="footer-links"><Link href="/about-author">About the author</Link><Link href="/copyright">Copyright & licensing</Link></div><span>© 2026 GuardianX LLC. All Rights Reserved.</span></footer>
   </main>;
 }
 
@@ -198,18 +206,19 @@ function AuthPage({ mode }: { mode: 'in' | 'up' }) {
     <div className="auth-content"><Link href="/" className="auth-back"><ArrowLeft size={15} /> Back to the academy</Link><div className="auth-form-wrap">{mode === 'in'
       ? <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
       : <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} />}
-      <p className="auth-support">A calm place to begin. Your progress stays with you.</p></div></div>
+      <p className="auth-support">A calm place to begin. Your progress stays with you.</p></div><GlobalFooter /></div>
   </main>;
 }
 
-function ProtectedRoute({ children, instructor = false }: { children: ReactNode; instructor?: boolean }) {
+function ProtectedRoute({ children, instructor = false, admin = false, accessRequired = false }: { children: ReactNode; instructor?: boolean; admin?: boolean; accessRequired?: boolean }) {
   const { isLoaded, isSignedIn } = useAuth();
   const dashboard = useGetAcademyDashboard({ query: { enabled: !!isSignedIn, queryKey: getGetAcademyDashboardQueryKey(), retry: false } });
   if (!isLoaded) return <LoadingPage />;
   if (!isSignedIn) return <Redirect to="/sign-in" />;
   if (dashboard.isLoading) return <LoadingPage />;
   if (dashboard.isError) return <ErrorPage retry={() => dashboard.refetch()} title="We couldn't load your study space" />;
-  if (instructor && dashboard.data?.role !== 'instructor' && dashboard.data?.role !== 'admin') return <AccessDenied />;
+  if ((instructor && dashboard.data?.role !== 'instructor' && dashboard.data?.role !== 'admin') || (admin && dashboard.data?.role !== 'admin')) return <AccessDenied />;
+  if (accessRequired && dashboard.data?.role === 'student' && !dashboard.data.access.hasAccess) return <AccessPaused />;
   return <>{children}</>;
 }
 
@@ -225,6 +234,14 @@ function AccessDenied() {
   return <main className="status-page"><div className="status-symbol"><LockKeyhole /></div><h1>Instructor access required</h1><p>This review space is only available to instructor accounts.</p><Link href="/dashboard" className="button button-primary">Return to your dashboard <ArrowRight size={16} /></Link></main>;
 }
 
+function AccessPaused() {
+  return <main className="access-paused">
+    <Link href="/" className="access-brand"><Brand /></Link>
+    <div className="access-paused-card"><span className="access-paused-symbol"><LockKeyhole size={20} /></span><p className="eyebrow">LEARNING ACCESS</p><h1 className="display">Your study space is ready.</h1><p>Your current account does not have active access to lesson content. Your account and saved progress remain intact. You can still view your dashboard and language preferences.</p><div className="access-paused-actions"><Link href="/dashboard" className="button button-primary">View dashboard <ArrowRight size={16} /></Link><Link href="/settings" className="button button-secondary">Language preferences</Link></div><p className="access-paused-note">If you expected learning access, contact GuardianX through the channel where you received your academy access.</p></div>
+    <GlobalFooter />
+  </main>;
+}
+
 function AppShell({ children, active }: { children: ReactNode; active: string }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { signOut } = useClerk();
@@ -238,19 +255,27 @@ function AppShell({ children, active }: { children: ReactNode; active: string })
     <Link href="/unit/greetings" className={cx('side-link', active === 'unit' && 'selected')} onClick={() => setMobileOpen(false)}><BookOpen size={18} /> Learning path</Link>
     <Link href="/flashcards" className={cx('side-link', active === 'flashcards' && 'selected')} onClick={() => setMobileOpen(false)}><Layers3 size={18} /> Vocabulary</Link>
     {isStaff && <><div className="nav-section-label nav-spaced">TEACHING</div><Link href="/instructor/review" className={cx('side-link', active === 'review' && 'selected')} onClick={() => setMobileOpen(false)}><CheckCircle2 size={18} /> Review queue</Link></>}
+    {dash.data?.role === 'admin' && <Link href="/admin/access" className={cx('side-link', active === 'admin' && 'selected')} onClick={() => setMobileOpen(false)}><LockKeyhole size={18} /> Account access</Link>}
+    <Link href="/settings" className={cx('side-link', active === 'settings' && 'selected')} onClick={() => setMobileOpen(false)}><Sun size={18} /> Preferences</Link>
     <div className="sidebar-bottom"><div className="sidebar-tip"><span>ص</span><p><b>Take it one phrase at a time.</b><small>Little and often goes a long way.</small></p></div><div className="profile-row"><div className="profile-avatar">{name.slice(0, 1).toUpperCase()}</div><div className="profile-name"><b>{name}</b><small>{dash.data?.role ?? 'student'} account</small></div><button aria-label="Sign out" className="icon-button sidebar-logout" onClick={() => signOut({ redirectUrl: basePath || '/' })} data-testid="button-sign-out"><LogOut size={17} /></button></div></div></>;
   return <div className="app-shell">
     <aside className={cx('sidebar', mobileOpen && 'sidebar-mobile-open')}>{nav}</aside>
     {mobileOpen && <button className="nav-scrim" aria-label="Close navigation" onClick={() => setMobileOpen(false)} />}
-    <div className="app-main"><header className="app-topbar"><button className="mobile-menu app-menu" onClick={() => setMobileOpen(true)} aria-label="Open navigation"><Menu /></button><div className="crumb">Academy <span>/</span> <b>{active === 'dashboard' ? 'Overview' : active === 'unit' ? 'Learning path' : active === 'flashcards' ? 'Vocabulary' : active === 'review' ? 'Review queue' : 'Lesson'}</b></div><div className="topbar-right"><span className="topbar-label">MODERN STANDARD ARABIC</span><span className="topbar-seal arabic">ع</span></div></header><div className="content-wrap">{children}</div></div>
+    <div className="app-main"><header className="app-topbar"><button className="mobile-menu app-menu" onClick={() => setMobileOpen(true)} aria-label="Open navigation"><Menu /></button><div className="crumb">Academy <span>/</span> <b>{active === 'dashboard' ? 'Overview' : active === 'unit' ? 'Learning path' : active === 'flashcards' ? 'Vocabulary' : active === 'review' ? 'Review queue' : active === 'settings' ? 'Preferences' : active === 'admin' ? 'Account access' : 'Lesson'}</b></div><div className="topbar-right"><span className="topbar-label">MODERN STANDARD ARABIC</span><span className="topbar-seal">GX</span></div></header><div className="content-wrap">{children}<GlobalFooter /></div></div>
   </div>;
 }
 
 function DashboardPage() {
   const dashboard = useGetAcademyDashboard();
-  const unit = useGetAcademyUnit();
-  const progress = useListLessonProgress();
+  const canStudy = dashboard.data ? dashboard.data.role !== 'student' || dashboard.data.access.hasAccess : false;
+  const unit = useGetAcademyUnit({ query: { queryKey: getGetAcademyUnitQueryKey(), enabled: canStudy, retry: false } });
+  const progress = useListLessonProgress({ query: { queryKey: getListLessonProgressQueryKey(), enabled: canStudy, retry: false } });
   if (dashboard.isLoading || unit.isLoading || progress.isLoading) return <LoadingPage />;
+  if (dashboard.data?.role === 'student' && !dashboard.data.access.hasAccess) return <AppShell active="dashboard"><main className="dashboard-page">
+    <div className="welcome-row"><div><p className="eyebrow">YOUR STUDY ROOM</p><h1 className="display">Ahlan, {dashboard.data.displayName || 'learner'}.</h1><p className="welcome-sub">Your learning space is here when access is active.</p></div><Link href="/settings" className="button button-secondary">Language preferences</Link></div>
+    <section className="access-status-panel"><div className="access-status-icon"><LockKeyhole size={20} /></div><div><span className="eyebrow">LEARNING ACCESS</span><h2>Lesson content is currently unavailable</h2><p>Your account is signed in, but it does not currently have access to lessons, progress updates, activity answers, or vocabulary review. Your saved learning remains associated with your account.</p><div className="access-facts"><span><small>PLAN</small><b>{dashboard.data.access.planType}</b></span><span><small>STATUS</small><b>{dashboard.data.access.subscriptionStatus.replace('_', ' ')}</b></span><span><small>ACCESS OVERRIDE</small><b>{dashboard.data.access.accessOverride}</b></span>{dashboard.data.access.trialExpiresAt && <span><small>TRIAL ENDS</small><b>{new Date(dashboard.data.access.trialExpiresAt).toLocaleDateString()}</b></span>}</div></div></section>
+    <p className="access-help">If you believe this is unexpected, contact GuardianX through the channel where you received academy access. No payment or audio service is connected here.</p>
+  </main></AppShell>;
   if (dashboard.isError || unit.isError || progress.isError || !dashboard.data || !unit.data) return <ErrorPage title="Your learning overview is taking a moment" retry={() => { void dashboard.refetch(); void unit.refetch(); void progress.refetch(); }} />;
   const lesson = unit.data.lessons.find((item) => item.id === dashboard.data.nextLessonId) ?? unit.data.lessons[0];
   const completed = progress.data?.filter((p) => p.completed).length ?? dashboard.data.completedLessons;
@@ -266,17 +291,18 @@ function DashboardPage() {
 }
 
 function UnitPage() {
-  const unit = useGetAcademyUnit();
-  const progress = useListLessonProgress();
+  const unit = useGetAcademyUnit({ query: { queryKey: getGetAcademyUnitQueryKey(), retry: false } });
+  const progress = useListLessonProgress({ query: { queryKey: getListLessonProgressQueryKey(), retry: false } });
   if (unit.isLoading || progress.isLoading) return <LoadingPage />;
   if (unit.isError || progress.isError || !unit.data) return <ErrorPage title="The learning path isn't available right now" retry={() => { void unit.refetch(); void progress.refetch(); }} />;
   return <AppShell active="unit"><main className="unit-page">
     <div className="page-intro fade-up"><p className="eyebrow">YOUR LEARNING PATH <span className="eyebrow-line" /></p><h1 className="display">{unit.data.title}</h1><p>{unit.data.description}</p><div className="unit-meta"><span className="pill">{unit.data.level}</span><span>{unit.data.lessons.length} short lessons</span><span>·</span><span>Beginner</span></div></div>
-    <div className="unit-layout"><section className="lesson-path">{unit.data.lessons.map((lesson, index) => {
+     <div className="unit-author-credit"><span className="credit-label">COURSE AUTHOR</span><b>Rana Al Dahlake (رنا الدهلكي)</b><span>Published by GuardianX LLC</span></div>
+     <div className="unit-layout"><section className="lesson-path">{unit.data.lessons.map((lesson, index) => {
       const entry = progress.data?.find((p) => p.lessonId === lesson.id);
       const isNext = lesson.id === (progress.data?.find((p) => !p.completed)?.lessonId ?? unit.data?.lessons[0]?.id);
       return <Link href={`/lesson/${lesson.id}`} key={lesson.id} className={cx('path-lesson', isNext && 'path-current', entry?.completed && 'path-done')} data-testid={`link-path-lesson-${lesson.id}`}><div className="path-node">{entry?.completed ? <Check size={16} /> : <span>{String(index + 1).padStart(2, '0')}</span>}</div><div className="path-lesson-copy"><div className="path-label">{lesson.section} <span>·</span> LESSON {String(index + 1).padStart(2, '0')}</div><h2>{lesson.title}</h2><p>{lesson.description}</p><div className="path-submeta"><span><Clock3 size={13} /> {lesson.durationMinutes} min</span><span>{lesson.activities.length} practice items</span></div></div><ArrowRight className="path-arrow" size={17} /></Link>;
-    })}</section><aside className="unit-aside"><div className="unit-aside-card"><span className="eyebrow">A LITTLE CONTEXT</span><span className="arabic cultural-arabic" dir="rtl">السَّلَامُ عَلَيْكُمْ</span><h3>A greeting with a wish inside.</h3><p>{unit.data.culturalNote}</p></div><div className="unit-aside-foot"><span className="arabic">ع</span><p>Each lesson introduces a phrase you can actually use.</p></div></aside></div>
+     })}</section><aside className="unit-aside"><div className="unit-aside-card"><span className="eyebrow">A LITTLE CONTEXT</span><span className="arabic cultural-arabic" dir="rtl">السَّلَامُ عَلَيْكُمْ</span><h3>A greeting with a wish inside.</h3><p>{unit.data.culturalNote}</p></div>{unit.data.dialectExamples.length > 0 && <div className="dialect-card"><span className="eyebrow">OPTIONAL DIALECT CONTEXT</span><h3>Iraqi Arabic</h3><p>These examples are additional context. Modern Standard Arabic remains the course default.</p>{unit.data.dialectExamples.map((example) => <div className="dialect-example" key={example.id}><b className="arabic" dir="rtl">{example.arabic}</b><span>{example.transliteration} · {example.english}</span><small>{example.usageNote}</small></div>)}</div>}<div className="unit-aside-foot"><span>GX</span><p>Each lesson introduces a phrase you can actually use.</p></div></aside></div>
   </main></AppShell>;
 }
 
@@ -284,10 +310,11 @@ const stepOrder = ['learn', 'listen', 'understand', 'practice', 'review', 'quiz'
 
 function LessonPage() {
   const { lessonId = '' } = useParams<{ lessonId: string }>();
-  const unit = useGetAcademyUnit();
-  const progress = useListLessonProgress();
+  const unit = useGetAcademyUnit({ query: { queryKey: getGetAcademyUnitQueryKey(), retry: false } });
+  const progress = useListLessonProgress({ query: { queryKey: getListLessonProgressQueryKey(), retry: false } });
   const save = useSaveLessonProgress();
   const answerMutation = useSubmitActivityAnswer();
+  const preferences = useGetAcademyPreferences({ query: { queryKey: getGetAcademyPreferencesQueryKey() } });
   const [activityIndex, setActivityIndex] = useState(0);
   const [answer, setAnswer] = useState('');
   const [result, setResult] = useState<Awaited<ReturnType<typeof answerMutation.mutateAsync>> | null>(null);
@@ -298,6 +325,7 @@ function LessonPage() {
   if (unit.isLoading || progress.isLoading) return <LoadingPage />;
   if (unit.isError || progress.isError || !unit.data || !lesson) return <ErrorPage title="We couldn't find that lesson" retry={() => { void unit.refetch(); void progress.refetch(); }} />;
   const activeActivity = lesson.activities[activityIndex];
+  const displayArabic = (text: string) => preferences.data?.showTashkeel === false ? text.replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, '') : text;
   const step = currentProgress?.currentStep ?? 'learn';
   const index = Math.max(0, stepOrder.indexOf(step));
   const previous = unit.data.lessons[lesson.sequence - 2] ?? null;
@@ -312,7 +340,11 @@ function LessonPage() {
   };
   const checkAnswer = () => {
     if (!activeActivity || !answer.trim()) return;
-    answerMutation.mutate({ data: { activityId: activeActivity.id, answer: answer.trim() } }, { onSuccess: setResult });
+    answerMutation.mutate({ data: { activityId: activeActivity.id, answer: answer.trim() } }, { onSuccess: (response) => {
+      setResult(response);
+      void queryClient.invalidateQueries({ queryKey: getListLessonProgressQueryKey() });
+      void queryClient.invalidateQueries({ queryKey: getGetAcademyDashboardQueryKey() });
+    } });
   };
   const goComplete = () => {
     saveStep('mastery', true, result?.score ?? currentProgress?.latestScore ?? 100);
@@ -324,24 +356,26 @@ function LessonPage() {
     <div className="lesson-layout"><section className="lesson-main-card">
       {(step === 'mastery' || currentProgress?.completed) && !reviewMode ? <div className="lesson-complete"><div className="complete-seal"><Check size={29} /></div><p className="eyebrow">A STEP WELL TAKEN</p><h2 className="display">You completed this lesson.</h2><p>Every phrase you meet is another way into the language.</p><div className="complete-actions"><Button className="button-secondary" onClick={() => { setReviewMode(true); setActivityIndex(0); setAnswer(''); setResult(null); }} data-testid="button-review-answers">Review answers <ArrowRight size={16} /></Button>{previous && <Link className="button button-secondary" href={`/lesson/${previous.id}`}><ArrowLeft size={16} /> Previous lesson</Link>}{next ? <Link className="button button-primary" href={`/lesson/${next.id}`}>Next lesson <ArrowRight size={16} /></Link> : <Link className="button button-primary" href="/unit/greetings">Back to your path <ArrowRight size={16} /></Link>}</div></div>
       : !activeActivity || step === 'learn' || step === 'listen' || step === 'understand' ? <div className="lesson-learn">
-        <span className="pill">{step === 'learn' ? 'FIRST, THE MEANING' : step === 'listen' ? 'NOTICE THE SOUND' : 'SEE HOW IT FITS'}</span><div className="learn-arabic arabic" dir="rtl">{activeActivity?.arabicPrompt || 'السَّلَامُ عَلَيْكُمْ'}</div><h2 className="learn-heading">{lesson.content}</h2>{lesson.transliteration && <p className="learn-translit">{lesson.transliteration}</p>}{activeActivity?.audioAvailable === false && <div className="audio-notice"><span className="audio-icon"><Volume2 size={18} /></span><p><b>Audio is not available yet</b><span>{activeActivity.audioNotice || 'Recorded pronunciation is being prepared. For now, follow the written transliteration and take your time with each sound.'}</span></p><span className="audio-status">SETUP<br />IN PROGRESS</span></div>}<div className="learn-footer"><span>{step.toUpperCase()} · {String(index + 1).padStart(2, '0')}</span><Button className="button-primary" onClick={() => {
+         <span className="pill">{step === 'learn' ? 'FIRST, THE MEANING' : step === 'listen' ? 'NOTICE THE SOUND' : 'SEE HOW IT FITS'}</span><div className="learn-arabic arabic" dir="rtl">{displayArabic(activeActivity?.arabicPrompt || 'السَّلَامُ عَلَيْكُمْ')}</div><h2 className="learn-heading">{lesson.content}</h2>{preferences.data?.showTransliteration !== false && lesson.transliteration && <p className="learn-translit">{lesson.transliteration}</p>}{activeActivity?.audioAvailable === false && <div className="audio-notice"><span className="audio-icon"><Volume2 size={18} /></span><p><b>Audio is not available yet</b><span>{activeActivity.audioNotice || 'Recorded pronunciation is being prepared. For now, follow the written transliteration and take your time with each sound.'}</span></p><span className="audio-status">SETUP<br />IN PROGRESS</span></div>}<div className="learn-footer"><span>{step.toUpperCase()} · {String(index + 1).padStart(2, '0')}</span><Button className="button-primary" onClick={() => {
           if (step === 'learn') saveStep('listen');
           else if (step === 'listen') saveStep('understand');
           else { saveStep('practice'); setActivityIndex(0); }
         }} data-testid="button-start-practice">{step === 'learn' ? 'Continue to pronunciation' : step === 'listen' ? 'I understand the sounds' : 'I’m ready to practice'} <ArrowRight size={16} /></Button></div>
       </div>
-       : activeActivity ? <ActivityPractice key={activeActivity.id} activity={activeActivity} activityIndex={activityIndex} total={lesson.activities.length} answer={answer} setAnswer={setAnswer} result={result} busy={answerMutation.isPending} onCheck={checkAnswer} onRetry={() => { setAnswer(''); setResult(null); }} onNext={() => activityIndex < lesson.activities.length - 1 ? moveActivity(1) : goComplete()} onPrevious={() => moveActivity(-1)} completed={currentProgress?.completed ?? false} /> : <div className="lesson-empty">There are no practice activities in this lesson yet.</div>}
-      {save.isPending && <div className="save-status">Saving your progress…</div>}
+       : activeActivity ? <ActivityPractice key={activeActivity.id} activity={activeActivity} activityIndex={activityIndex} total={lesson.activities.length} answer={answer} setAnswer={setAnswer} result={result} busy={answerMutation.isPending} onCheck={checkAnswer} onRetry={() => { setAnswer(''); setResult(null); }} onNext={() => activityIndex < lesson.activities.length - 1 ? moveActivity(1) : goComplete()} onPrevious={() => moveActivity(-1)} completed={currentProgress?.completed ?? false} showTashkeel={preferences.data?.showTashkeel !== false} /> : <div className="lesson-empty">There are no practice activities in this lesson yet.</div>}
+       {save.isPending && <div className="save-status">Saving your progress…</div>}{save.isSuccess && !save.isPending && <div className="save-status">Progress saved.</div>}{save.isError && <div className="inline-feedback error" role="status">Progress could not be saved. Try saving again.</div>}{answerMutation.isError && <div className="inline-feedback error" role="status">Your answer could not be checked just now. Please try again.</div>}
     </section><aside className="lesson-aside"><span className="eyebrow">LESSON NOTES</span><div className="lesson-aside-line" /><div className="lesson-aside-note"><span className="arabic" dir="rtl">مرحبا</span><h3>Let meaning lead.</h3><p>Notice the whole phrase before you try to break it into sounds.</p></div><div className="lesson-aside-bottom"><Sun size={13} className="tiny-sun" /><p>Progress saves as you go.</p></div></aside></div>
      <div className="lesson-nav-row"><Link href={previous ? `/lesson/${previous.id}` : '/unit/greetings'} className="lesson-nav-link"><ArrowLeft size={15} /><span><small>PREVIOUS</small><b>{previous?.title ?? 'Learning path'}</b></span></Link><Button className="button-secondary" onClick={() => saveStep(step, currentProgress?.completed ?? false, currentProgress?.latestScore ?? undefined)} disabled={save.isPending} data-testid="button-save-progress">{save.isPending ? 'Saving…' : 'Save progress'}</Button><Link href={next ? `/lesson/${next.id}` : '/unit/greetings'} className="lesson-nav-link next"><span><small>NEXT LESSON</small><b>{next?.title ?? 'Unit overview'}</b></span><ArrowRight size={15} /></Link></div>
   </main></AppShell>;
 }
 
-function ActivityPractice({ activity, activityIndex, total, answer, setAnswer, result, busy, onCheck, onRetry, onNext, onPrevious, completed }: {
+function ActivityPractice({ activity, activityIndex, total, answer, setAnswer, result, busy, onCheck, onRetry, onNext, onPrevious, completed, showTashkeel }: {
   activity: AcademyActivity; activityIndex: number; total: number; answer: string; setAnswer: (value: string) => void;
+  showTashkeel: boolean;
   result: { correct: boolean; score: number; feedback: string; correctAnswer: string; explanation: string; attemptNumber: number } | null;
   busy: boolean; onCheck: () => void; onRetry: () => void; onNext: () => void; onPrevious: () => void; completed: boolean;
 }) {
+  const arabicText = (text: string) => showTashkeel ? text : text.replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, '');
   const selectable = activity.choices.length > 0;
   let selectedMatches: Record<string, string> = {};
   if (answer && activity.type === 'matching') {
@@ -353,10 +387,10 @@ function ActivityPractice({ activity, activityIndex, total, answer, setAnswer, r
   return <div className="practice-panel">
     <div className="practice-top"><span className="pill">PRACTICE · {String(activityIndex + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}</span><span className="activity-type">{activity.type.replace(/[A-Z]/g, (x) => ` ${x}`).toUpperCase()}</span></div>
     <h2>{activity.prompt}</h2><p className="practice-instruction">{activity.instructions}</p>
-    {activity.arabicPrompt && <div className="prompt-arabic arabic" dir="rtl">{activity.arabicPrompt}</div>}
-    {activity.type === 'matching' ? <div className="matching-list">{activity.leftOptions.map((left, index) => <label className="matching-row" key={`${left}-${index}`}><span className={/[\u0600-\u06FF]/.test(left) ? 'arabic' : ''} dir="auto">{left}</span><select aria-label={`Meaning for ${left}`} value={selectedMatches[left] ?? ''} disabled={!!result} onChange={(event) => setAnswer(JSON.stringify({ ...selectedMatches, [left]: event.target.value }))} data-testid={`select-match-${index}`}><option value="">Choose a meaning</option>{activity.rightOptions.map((right) => <option value={right} key={right}>{right}</option>)}</select></label>)}</div>
-      : selectable ? <div className="choice-list">{activity.choices.map((choice, i) => <button key={`${choice}-${i}`} className={cx('choice-option', answer === choice && 'choice-selected', result && choice === result.correctAnswer && 'choice-correct', result && answer === choice && !result.correct && 'choice-incorrect')} onClick={() => { if (!result) setAnswer(choice); }} disabled={!!result} data-testid={`button-choice-${i}`}><span className="choice-key">{String.fromCharCode(65 + i)}</span><span className={/[\u0600-\u06FF]/.test(choice) ? 'arabic' : ''}>{choice}</span>{result && choice === result.correctAnswer && <Check size={16} />}</button>)}</div>
-      : activity.wordBank.length ? <><div className="answer-composer" dir="auto">{answer || <span>Choose the words below…</span>}</div><div className="word-bank">{activity.wordBank.map((word, i) => <button key={`${word}-${i}`} className="word-chip" disabled={!!result || answer.includes(word)} onClick={() => setAnswer([answer, word].filter(Boolean).join(' '))} data-testid={`button-word-${i}`}>{word}</button>)}{answer && !result && <button className="clear-answer" onClick={() => setAnswer('')}>Clear</button>}</div></>
+     {activity.arabicPrompt && <div className="prompt-arabic arabic" dir="rtl">{arabicText(activity.arabicPrompt)}</div>}
+     {activity.type === 'matching' ? <div className="matching-list">{activity.leftOptions.map((left, index) => <label className="matching-row" key={`${left}-${index}`}><span className={/[\u0600-\u06FF]/.test(left) ? 'arabic' : ''} dir="auto">{arabicText(left)}</span><select aria-label={`Meaning for ${left}`} value={selectedMatches[left] ?? ''} disabled={!!result} onChange={(event) => setAnswer(JSON.stringify({ ...selectedMatches, [left]: event.target.value }))} data-testid={`select-match-${index}`}><option value="">Choose a meaning</option>{activity.rightOptions.map((right) => <option value={right} key={right}>{right}</option>)}</select></label>)}</div>
+       : selectable ? <div className="choice-list">{activity.choices.map((choice, i) => <button key={`${choice}-${i}`} className={cx('choice-option', answer === choice && 'choice-selected', result && choice === result.correctAnswer && 'choice-correct', result && answer === choice && !result.correct && 'choice-incorrect')} onClick={() => { if (!result) setAnswer(choice); }} disabled={!!result} data-testid={`button-choice-${i}`}><span className="choice-key">{String.fromCharCode(65 + i)}</span><span className={/[\u0600-\u06FF]/.test(choice) ? 'arabic' : ''}>{arabicText(choice)}</span>{result && choice === result.correctAnswer && <Check size={16} />}</button>)}</div>
+       : activity.wordBank.length ? <><div className="answer-composer" dir="auto">{answer || <span>Choose the words below…</span>}</div><div className="word-bank">{activity.wordBank.map((word, i) => <button key={`${word}-${i}`} className="word-chip" disabled={!!result || answer.includes(word)} onClick={() => setAnswer([answer, word].filter(Boolean).join(' '))} data-testid={`button-word-${i}`}>{arabicText(word)}</button>)}{answer && !result && <button className="clear-answer" onClick={() => setAnswer('')}>Clear</button>}</div></>
       : <input className="answer-input" value={answer} onChange={(e) => setAnswer(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') onCheck(); }} placeholder="Type your answer…" dir="auto" aria-label="Your answer" data-testid="input-activity-answer" />}
     {result && <div className={cx('answer-feedback', result.correct ? 'feedback-correct' : 'feedback-try')}><div className="feedback-icon">{result.correct ? <Check size={18} /> : <ArrowRight size={18} />}</div><div><b>{result.feedback || (result.correct ? 'That’s right.' : 'Not quite yet.')}</b><p>{result.explanation}</p>{!result.correct && <p className="correct-answer">A good answer: <strong>{result.correctAnswer}</strong></p>}</div></div>}
      <div className="practice-footer"><button className="practice-back" onClick={onPrevious} disabled={activityIndex === 0}><ArrowLeft size={15} /> Previous</button>{result?.correct ? <Button className="button-primary" onClick={onNext} data-testid="button-next-question">{activityIndex + 1 < total ? 'Next question' : 'Complete lesson'} <ArrowRight size={16} /></Button> : result ? <Button className="button-primary" onClick={onRetry} data-testid="button-retry-answer">Retry <ArrowRight size={16} /></Button> : <Button className="button-primary" onClick={onCheck} disabled={!answerReady || busy} data-testid="button-check-answer">{busy ? 'Checking…' : 'Submit answer'} {busy ? null : <Check size={16} />}</Button>}</div>
@@ -366,20 +400,24 @@ function ActivityPractice({ activity, activityIndex, total, answer, setAnswer, r
 
 function FlashcardsPage() {
   const [search, setSearch] = useState('');
+  const [reviewNotice, setReviewNotice] = useState('');
   const params = search.trim() ? { q: search.trim() } : undefined;
-  const cards = useListAcademyFlashcards(params, { query: { queryKey: getListAcademyFlashcardsQueryKey(params) } });
+  const cards = useListAcademyFlashcards(params, { query: { queryKey: getListAcademyFlashcardsQueryKey(params), retry: false } });
   const review = useReviewAcademyFlashcard();
   const [revealed, setRevealed] = useState<string | null>(null);
   const [reviewed, setReviewed] = useState<Record<string, string>>({});
   const submitReview = (card: AcademyFlashcard, remembered: boolean) => review.mutate({ flashcardId: card.id, data: { remembered } }, {
     onSuccess: (response) => {
+      setReviewNotice(response.known ? 'Review saved. This word is marked familiar.' : 'Review saved. This word is ready for another practice round.');
       setReviewed((prev) => ({ ...prev, [card.id]: response.known ? 'known' : 'again' }));
       void queryClient.invalidateQueries({ queryKey: getListAcademyFlashcardsQueryKey(params) });
     },
+    onError: () => setReviewNotice('Your review could not be saved. Please try again.'),
   });
   return <AppShell active="flashcards"><main className="flashcards-page">
     <div className="page-intro fade-up"><p className="eyebrow">WORDS WORTH KEEPING <span className="eyebrow-line" /></p><h1 className="display">Vocabulary, made familiar.</h1><p>Search the words you have met, then mark what you remember.</p></div>
     <div className="vocab-toolbar"><label className="search-field"><Search size={17} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search Arabic, transliteration, or meaning" aria-label="Search vocabulary" data-testid="input-search-vocabulary" />{search && <button onClick={() => setSearch('')} aria-label="Clear search"><X size={15} /></button>}</label><span className="vocab-count">{cards.data?.length ?? '—'} WORDS</span></div>
+    {reviewNotice && <p className={cx('inline-feedback', review.isError && 'error')} role="status">{reviewNotice}</p>}
     {cards.isLoading ? <div className="flashcard-grid">{[1, 2, 3].map((n) => <div className="flashcard-skeleton" key={n}><div /><div /><div /></div>)}</div>
       : cards.isError ? <ErrorPage title="Your vocabulary isn't available right now" retry={() => void cards.refetch()} />
       : cards.data?.length ? <div className="flashcard-grid">{cards.data.map((card, i) => <Flashcard key={card.id} card={card} number={i + 1} revealed={revealed === card.id} setRevealed={() => setRevealed(revealed === card.id ? null : card.id)} status={reviewed[card.id]} isPending={review.isPending && review.variables?.flashcardId === card.id} review={(remembered) => submitReview(card, remembered)} />)}</div>
@@ -403,13 +441,15 @@ function InstructorPage() {
   const update = useUpdateInstructorReviewItem();
   const [selected, setSelected] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, { content: string; tags: string; mergeId: string }>>({});
+  const [notice, setNotice] = useState('');
   const active = items.data?.find((item) => item.id === selected) ?? items.data?.[0];
   const readDraft = (item: InstructorReviewItem) => drafts[item.id] ?? { content: item.draftContent, tags: item.tags.join(', '), mergeId: '' };
   const patchDraft = (item: InstructorReviewItem, key: 'content' | 'tags' | 'mergeId', value: string) => setDrafts((prev) => ({ ...prev, [item.id]: { ...readDraft(item), [key]: value } }));
   const execute = (item: InstructorReviewItem, action: 'edit' | 'approve' | 'reject' | 'merge') => {
     const draft = readDraft(item);
     update.mutate({ reviewItemId: item.id, data: { action, draftContent: draft.content, tags: draft.tags.split(',').map((tag) => tag.trim()).filter(Boolean), mergeIntoId: action === 'merge' ? draft.mergeId || null : null } }, {
-      onSuccess: () => { void queryClient.invalidateQueries({ queryKey: getListInstructorReviewItemsQueryKey() }); },
+      onSuccess: () => { setNotice('Review item updated.'); void queryClient.invalidateQueries({ queryKey: getListInstructorReviewItemsQueryKey() }); },
+      onError: () => setNotice('The review update did not save. Please retry.'),
     });
   };
   return <AppShell active="review"><main className="instructor-page">
@@ -420,9 +460,107 @@ function InstructorPage() {
         <label className="field-label" htmlFor="draft-content">Draft content</label><textarea id="draft-content" className="draft-textarea" value={readDraft(active).content} onChange={(e) => patchDraft(active, 'content', e.target.value)} rows={8} data-testid="input-review-draft" />
         <label className="field-label" htmlFor="draft-tags">Tags <span>Separate with commas</span></label><input id="draft-tags" className="draft-tags" value={readDraft(active).tags} onChange={(e) => patchDraft(active, 'tags', e.target.value)} placeholder="greetings, beginner, phrase" data-testid="input-review-tags" /><div className="tag-preview">{readDraft(active).tags.split(',').map((tag) => tag.trim()).filter(Boolean).map((tag) => <span key={tag}>{tag}</span>)}</div>
         {items.data.length > 1 && <div className="merge-row"><label className="field-label" htmlFor="merge-target">Merge into another draft</label><select id="merge-target" value={readDraft(active).mergeId} onChange={(e) => patchDraft(active, 'mergeId', e.target.value)} className="draft-tags" data-testid="select-merge-target"><option value="">Choose a review item</option>{items.data.filter((item) => item.id !== active.id).map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select><Button className="button-secondary" onClick={() => execute(active, 'merge')} disabled={!readDraft(active).mergeId || update.isPending} data-testid="button-merge-review">Merge drafts <Layers3 size={15} /></Button></div>}
-        <div className="review-actions"><Button className="button-secondary" onClick={() => execute(active, 'edit')} disabled={update.isPending} data-testid="button-save-draft">{update.isPending ? 'Saving…' : 'Save draft'} <Check size={15} /></Button><div className="review-actions-right"><Button className="button-reject" onClick={() => execute(active, 'reject')} disabled={update.isPending} data-testid="button-reject-review">Reject</Button><Button className="button-primary" onClick={() => execute(active, 'approve')} disabled={update.isPending} data-testid="button-approve-review">Approve <Check size={15} /></Button></div></div>
+         {notice && <div className={cx('inline-feedback', update.isError && 'error')} role="status">{notice}</div>}
+         <div className="review-actions"><Button className="button-secondary" onClick={() => execute(active, 'edit')} disabled={update.isPending} data-testid="button-save-draft">{update.isPending ? 'Saving…' : 'Save draft'} <Check size={15} /></Button><div className="review-actions-right"><Button className="button-reject" onClick={() => execute(active, 'reject')} disabled={update.isPending} data-testid="button-reject-review">Reject</Button><Button className="button-primary" onClick={() => execute(active, 'approve')} disabled={update.isPending} data-testid="button-approve-review">Approve <Check size={15} /></Button></div></div>
       </section>}
     </div>}
+  </main></AppShell>;
+}
+
+function GlobalFooter() {
+  return <footer className="global-footer"><span>© 2026 GuardianX LLC. All Rights Reserved.</span><nav aria-label="Legal and author information"><Link href="/about-author">About the author</Link><Link href="/copyright">Copyright & licensing</Link></nav></footer>;
+}
+
+function InfoPage({ kind }: { kind: 'author' | 'copyright' }) {
+  const author = kind === 'author';
+  return <main className="info-page">
+    <Link href="/" className="back-link"><ArrowLeft size={15} /> GuardianX Arabic Academy</Link>
+    <p className="eyebrow">{author ? 'AUTHOR ATTRIBUTION' : 'PUBLISHER & RIGHTS'}</p>
+    <h1 className="display">{author ? 'About the author' : 'Copyright & licensing'}</h1>
+    {author ? <section className="info-paper"><div className="info-glyph">GX</div><span className="eyebrow">OFFICIAL COURSE CREDIT</span><h2>Rana Al Dahlake<br /><span className="arabic" dir="rtl">رنا الدهلكي</span></h2><p>Author of <i>GuardianX Arabic Academy</i>, a beginner course in Modern Standard Arabic.</p><div className="info-rule" /><p className="info-small">Published by GuardianX LLC.</p></section> :
+      <section className="info-paper"><span className="eyebrow">OFFICIAL NOTICE</span><h2>GuardianX Arabic Academy</h2><p className="copyright-notice">© 2026 GuardianX LLC. All Rights Reserved.</p><p>Course text, original lesson structure, and associated academy materials are provided for learning through GuardianX Arabic Academy. All rights are reserved by GuardianX LLC unless a separate written permission says otherwise.</p><p>Commercial reuse, republication, redistribution, or adaptation is not permitted without prior written authorization. To request commercial licensing or permission, please use the contact method through which you received access to this academy. No license is granted by access to the learning experience alone.</p><p>Author credit: Rana Al Dahlake (رنا الدهلكي). Publisher: GuardianX LLC.</p></section>}
+    <GlobalFooter />
+  </main>;
+}
+
+function SettingsPage() {
+  const prefs = useGetAcademyPreferences({ query: { queryKey: getGetAcademyPreferencesQueryKey() } });
+  const dashboard = useGetAcademyDashboard();
+  const save = useUpdateAcademyPreferences();
+  const client = useQueryClient();
+  const change = (key: 'showTransliteration' | 'showTashkeel', value: boolean) => {
+    if (!prefs.data) return;
+    save.mutate({ data: { ...prefs.data, [key]: value } }, {
+      onSuccess: (data) => { client.setQueryData(getGetAcademyPreferencesQueryKey(), data); void client.invalidateQueries({ queryKey: getGetAcademyPreferencesQueryKey() }); },
+    });
+  };
+  if (prefs.isLoading) return <AppShell active="settings"><LoadingPage /></AppShell>;
+  if (prefs.isError || !prefs.data) return <AppShell active="settings"><ErrorPage title="Your display preferences couldn't be loaded" retry={() => void prefs.refetch()} /></AppShell>;
+  return <AppShell active="settings"><main className="settings-page">
+    <div className="page-intro"><p className="eyebrow">YOUR STUDY SPACE</p><h1 className="display">Language display</h1><p>Choose the reading support that helps you learn comfortably.</p></div>
+    {dashboard.data?.role === 'student' && !dashboard.data.access.hasAccess && <section className="settings-access-banner"><LockKeyhole size={18} /><div><b>Learning access is currently inactive</b><p>Your preferences remain available and will be ready when lesson access resumes.</p></div></section>}
+    <section className="settings-panel">
+      <div className="preference-row"><div><h2>Transliteration</h2><p>Show Latin-letter pronunciation alongside Arabic during lessons.</p></div><button className={cx('toggle', prefs.data.showTransliteration && 'toggle-on')} role="switch" aria-checked={prefs.data.showTransliteration} aria-label="Show transliteration" onClick={() => change('showTransliteration', !prefs.data.showTransliteration)} data-testid="toggle-transliteration"><span /></button></div>
+      <div className="preference-row"><div><h2>Tashkeel marks</h2><p>Show vowel and pronunciation marks above and below Arabic letters.</p></div><button className={cx('toggle', prefs.data.showTashkeel && 'toggle-on')} role="switch" aria-checked={prefs.data.showTashkeel} aria-label="Show tashkeel marks" onClick={() => change('showTashkeel', !prefs.data.showTashkeel)} data-testid="toggle-tashkeel"><span /></button></div>
+      {save.isPending && <p className="inline-feedback">Saving your preferences…</p>}
+      {save.isError && <p className="inline-feedback error" role="status">Preferences could not be saved. Please try again.</p>}
+      {save.isSuccess && <p className="inline-feedback success" role="status">Your preferences are saved.</p>}
+    </section><p className="settings-note"><b>Course language</b> Modern Standard Arabic is the default across lessons. Optional Iraqi Arabic context is clearly labeled in the learning path.</p>
+  </main></AppShell>;
+}
+
+function AdminUserRow({ user }: { user: AdminAcademyUser }) {
+  const client = useQueryClient();
+  const update = useUpdateAdminAcademyUser();
+  const [roleChoice, setRoleChoice] = useState<AdminAcademyUserUpdate['role'] | ''>(user.role === 'admin' ? '' : user.role);
+  const [form, setForm] = useState<AdminAcademyUserUpdate>({
+    role: user.role === 'admin' ? 'instructor' : user.role,
+    planType: user.planType, subscriptionStatus: user.subscriptionStatus, accessOverride: user.accessOverride,
+    trialStartedAt: user.trialStartedAt, trialExpiresAt: user.trialExpiresAt,
+  });
+  const set = (key: keyof AdminAcademyUserUpdate, value: string | null) => setForm((current) => ({ ...current, [key]: value }));
+  const saveUser = () => {
+    if (!roleChoice) return;
+    update.mutate({ userId: user.userId, data: { ...form, role: roleChoice } }, { onSuccess: () => { void client.invalidateQueries({ queryKey: getListAdminAcademyUsersQueryKey() }); } });
+  };
+  return <article className="admin-user-row">
+    <div className="admin-user-id"><b>{user.displayName || user.email || 'Academy learner'}</b><span>{user.email || user.userId}</span><small>Access: {user.hasAccess ? 'enabled' : 'not enabled'} · {user.billingProvider || 'no billing provider'}</small></div>
+    <div className="admin-fields">
+      <label>Role<select value={roleChoice} onChange={(e) => setRoleChoice(e.target.value as AdminAcademyUserUpdate['role'] | '')}>{user.role === 'admin' && <option value="">Choose learner or instructor</option>}<option value="student">Learner</option><option value="instructor">Instructor</option></select></label>
+      <label>Plan<select value={form.planType} onChange={(e) => set('planType', e.target.value)}>{['beta', 'free', 'trial', 'paid'].map((v) => <option key={v} value={v}>{v}</option>)}</select></label>
+      <label>Subscription<select value={form.subscriptionStatus} onChange={(e) => set('subscriptionStatus', e.target.value)}>{['beta', 'trialing', 'active', 'inactive', 'past_due', 'canceled', 'expired'].map((v) => <option key={v} value={v}>{v.replace('_', ' ')}</option>)}</select></label>
+      <label>Access override<select value={form.accessOverride} onChange={(e) => set('accessOverride', e.target.value)}>{['inherit', 'grant', 'revoke'].map((v) => <option key={v} value={v}>{v}</option>)}</select></label>
+      <label>Trial starts<input type="datetime-local" value={form.trialStartedAt ? form.trialStartedAt.slice(0, 16) : ''} onChange={(e) => set('trialStartedAt', e.target.value ? new Date(e.target.value).toISOString() : null)} /></label>
+      <label>Trial expires<input type="datetime-local" value={form.trialExpiresAt ? form.trialExpiresAt.slice(0, 16) : ''} onChange={(e) => set('trialExpiresAt', e.target.value ? new Date(e.target.value).toISOString() : null)} /></label>
+    </div>
+    <div className="admin-row-actions"><span>{update.isError ? 'Could not save. Ensure at least one administrator remains.' : update.isSuccess ? 'Changes saved.' : user.role === 'admin' && !roleChoice ? 'Choose learner or instructor before saving this administrator account.' : ''}</span><Button className="button-primary" disabled={update.isPending || !roleChoice} onClick={saveUser} data-testid={`button-save-user-${user.userId}`}>{update.isPending ? 'Saving…' : 'Save access'}</Button></div>
+  </article>;
+}
+
+function AdminAccessPage() {
+  const users = useListAdminAcademyUsers({ query: { queryKey: getListAdminAcademyUsersQueryKey() } });
+  const backup = useGetAdminAcademyExport({ query: { queryKey: getGetAdminAcademyExportQueryKey(), enabled: false } });
+  const [exportError, setExportError] = useState('');
+  const download = async () => {
+    setExportError('');
+    try {
+      const result = await backup.refetch();
+      if (!result.data) throw new Error('No export data');
+      const url = URL.createObjectURL(new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' }));
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `guardianx-academy-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch { setExportError('The backup could not be prepared. Please try again.'); }
+  };
+  if (users.isLoading) return <AppShell active="admin"><LoadingPage /></AppShell>;
+  if (users.isError) return <AppShell active="admin"><ErrorPage title="Account access could not be loaded" retry={() => void users.refetch()} /></AppShell>;
+  return <AppShell active="admin"><main className="admin-page">
+    <div className="page-intro"><p className="eyebrow">GUARDIANX ADMINISTRATION</p><h1 className="display">Account access</h1><p>Manage academy roles and learning access. Payment processing is not connected here.</p></div>
+    <section className="admin-export"><div><span className="eyebrow">DATA BACKUP</span><h2>Download an academy snapshot</h2><p>Export the available academy records as a JSON file.</p></div><Button className="button-secondary" onClick={download} disabled={backup.isFetching} data-testid="button-export-backup">{backup.isFetching ? 'Preparing…' : 'Export JSON'}</Button></section>
+    {exportError && <p className="inline-feedback error" role="status">{exportError}</p>}
+    {users.data?.length ? <div className="admin-user-list">{users.data.map((user) => <AdminUserRow key={user.userId} user={user} />)}</div> : <div className="empty-review"><h2>No academy accounts found</h2><p>Accounts will appear here when available.</p></div>}
   </main></AppShell>;
 }
 
@@ -447,10 +585,14 @@ function Router() {
       <Route path="/sign-in/*?" component={() => <AuthPage mode="in" />} />
       <Route path="/sign-up/*?" component={() => <AuthPage mode="up" />} />
       <Route path="/dashboard">{() => <ProtectedRoute><DashboardPage /></ProtectedRoute>}</Route>
-      <Route path="/unit/greetings">{() => <ProtectedRoute><UnitPage /></ProtectedRoute>}</Route>
-      <Route path="/lesson/:lessonId">{() => <ProtectedRoute><LessonPage /></ProtectedRoute>}</Route>
-      <Route path="/flashcards">{() => <ProtectedRoute><FlashcardsPage /></ProtectedRoute>}</Route>
+      <Route path="/unit/greetings">{() => <ProtectedRoute accessRequired><UnitPage /></ProtectedRoute>}</Route>
+      <Route path="/lesson/:lessonId">{() => <ProtectedRoute accessRequired><LessonPage /></ProtectedRoute>}</Route>
+      <Route path="/flashcards">{() => <ProtectedRoute accessRequired><FlashcardsPage /></ProtectedRoute>}</Route>
       <Route path="/instructor/review">{() => <ProtectedRoute instructor><InstructorPage /></ProtectedRoute>}</Route>
+      <Route path="/settings">{() => <ProtectedRoute><SettingsPage /></ProtectedRoute>}</Route>
+      <Route path="/admin/access">{() => <ProtectedRoute admin><AdminAccessPage /></ProtectedRoute>}</Route>
+      <Route path="/about-author">{() => <InfoPage kind="author" />}</Route>
+      <Route path="/copyright">{() => <InfoPage kind="copyright" />}</Route>
       <Route component={NotFound} />
     </Switch>
   </ClerkProvider>;

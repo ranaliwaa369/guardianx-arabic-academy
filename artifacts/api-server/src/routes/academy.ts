@@ -1,12 +1,20 @@
 import { and, asc, eq, ilike, or } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
+  GetAcademyPreferencesResponse,
   GetAcademyDashboardResponse,
   GetAcademyUnitResponse,
+  GetAdminAcademyExportResponse,
+  ListAdminAcademyUsersResponse,
   ListAcademyFlashcardsQueryParams,
   ListAcademyFlashcardsResponse,
   ListInstructorReviewItemsResponse,
   ListLessonProgressResponse,
+  UpdateAcademyPreferencesBody,
+  UpdateAcademyPreferencesResponse,
+  UpdateAdminAcademyUserBody,
+  UpdateAdminAcademyUserParams,
+  UpdateAdminAcademyUserResponse,
   ReviewAcademyFlashcardBody,
   ReviewAcademyFlashcardParams,
   ReviewAcademyFlashcardResponse,
@@ -22,17 +30,22 @@ import {
 import {
   academyActivitiesTable,
   academyAttemptsTable,
+  academyDialectExamplesTable,
   academyFlashcardReviewsTable,
   academyFlashcardsTable,
   academyLessonsTable,
   academyProgressTable,
   academyReviewItemsTable,
   academyUnitsTable,
+  academyUserRolesTable,
   db,
 } from "@workspace/db";
 import {
   getAcademyUser,
+  hasAcademyAccess,
+  requireAdmin,
   requireAcademyAuth,
+  requireCourseAccess,
   requireInstructor,
   type AcademyUser,
 } from "../middlewares/academyAuth";
@@ -67,6 +80,28 @@ function parseVocabularyDraft(
 
 function toIso(value: Date | null | undefined): string | null {
   return value ? value.toISOString() : null;
+}
+
+function presentAdminUser(
+  account: typeof academyUserRolesTable.$inferSelect,
+) {
+  return {
+    userId: account.userId,
+    email: account.email,
+    displayName: account.displayName,
+    role: account.role,
+    planType: account.planType,
+    subscriptionStatus: account.subscriptionStatus,
+    accessOverride: account.accessOverride,
+    hasAccess: hasAcademyAccess(account),
+    trialStartedAt: toIso(account.trialStartedAt),
+    trialExpiresAt: toIso(account.trialExpiresAt),
+    billingProvider: account.billingProvider,
+    externalCustomerId: account.externalCustomerId,
+    externalSubscriptionId: account.externalSubscriptionId,
+    createdAt: account.createdAt.toISOString(),
+    lastSeenAt: toIso(account.lastSeenAt),
+  };
 }
 
 function normalizeAnswer(value: string): string {
@@ -222,11 +257,54 @@ router.get("/academy/dashboard", async (_req, res): Promise<void> => {
     ]),
     nextLessonId: firstIncomplete?.id ?? null,
     dueReviews: await getDueReviewCount(user.userId),
+    access: {
+      ...user.access,
+      hasAccess: user.role !== "student" || user.access.hasAccess,
+      trialStartedAt: toIso(user.access.trialStartedAt),
+      trialExpiresAt: toIso(user.access.trialExpiresAt),
+    },
   };
   res.json(GetAcademyDashboardResponse.parse(dashboard));
 });
 
-router.get("/academy/unit", async (_req, res): Promise<void> => {
+router.get(
+  "/academy/preferences",
+  async (_req, res): Promise<void> => {
+    const user = getAcademyUser(res);
+    const [preferences] = await db
+      .select({
+        showTransliteration: academyUserRolesTable.showTransliteration,
+        showTashkeel: academyUserRolesTable.showTashkeel,
+      })
+      .from(academyUserRolesTable)
+      .where(eq(academyUserRolesTable.userId, user.userId))
+      .limit(1);
+    res.json(GetAcademyPreferencesResponse.parse(preferences));
+  },
+);
+
+router.patch(
+  "/academy/preferences",
+  async (req, res): Promise<void> => {
+    const body = UpdateAcademyPreferencesBody.safeParse(req.body);
+    if (!body.success) {
+      res.status(400).json({ error: "Invalid language display preferences." });
+      return;
+    }
+    const user = getAcademyUser(res);
+    const [saved] = await db
+      .update(academyUserRolesTable)
+      .set(body.data)
+      .where(eq(academyUserRolesTable.userId, user.userId))
+      .returning({
+        showTransliteration: academyUserRolesTable.showTransliteration,
+        showTashkeel: academyUserRolesTable.showTashkeel,
+      });
+    res.json(UpdateAcademyPreferencesResponse.parse(saved));
+  },
+);
+
+router.get("/academy/unit", requireCourseAccess, async (_req, res): Promise<void> => {
   const user = getAcademyUser(res);
   const [unit] = await db
     .select()
@@ -263,6 +341,11 @@ router.get("/academy/unit", async (_req, res): Promise<void> => {
     .select()
     .from(academyFlashcardsTable)
     .where(eq(academyFlashcardsTable.unitId, unit.id));
+  const dialectExamples = await db
+    .select()
+    .from(academyDialectExamplesTable)
+    .where(eq(academyDialectExamplesTable.unitId, unit.id))
+    .orderBy(asc(academyDialectExamplesTable.sequence));
   const reviews = await db
     .select()
     .from(academyFlashcardReviewsTable)
@@ -289,11 +372,12 @@ router.get("/academy/unit", async (_req, res): Promise<void> => {
         known: review?.known ?? false,
       };
     }),
+    dialectExamples,
   };
   res.json(GetAcademyUnitResponse.parse(response));
 });
 
-router.get("/academy/progress", async (_req, res): Promise<void> => {
+router.get("/academy/progress", requireCourseAccess, async (_req, res): Promise<void> => {
   const user = getAcademyUser(res);
   const progress = await db
     .select()
@@ -306,7 +390,7 @@ router.get("/academy/progress", async (_req, res): Promise<void> => {
   );
 });
 
-router.put("/academy/progress/:lessonId", async (req, res): Promise<void> => {
+router.put("/academy/progress/:lessonId", requireCourseAccess, async (req, res): Promise<void> => {
   const params = SaveLessonProgressParams.safeParse(req.params);
   const body = SaveLessonProgressBody.safeParse(req.body);
   if (!params.success || !body.success) {
@@ -352,6 +436,7 @@ router.put("/academy/progress/:lessonId", async (req, res): Promise<void> => {
 
 router.post(
   "/academy/activities/answer",
+  requireCourseAccess,
   async (req, res): Promise<void> => {
     const body = SubmitActivityAnswerBody.safeParse(req.body);
     if (!body.success) {
@@ -419,7 +504,7 @@ router.post(
   },
 );
 
-router.get("/academy/flashcards", async (req, res): Promise<void> => {
+router.get("/academy/flashcards", requireCourseAccess, async (req, res): Promise<void> => {
   const params = ListAcademyFlashcardsQueryParams.safeParse(req.query);
   if (!params.success) {
     res.status(400).json({ error: "Invalid flashcard search." });
@@ -462,6 +547,7 @@ router.get("/academy/flashcards", async (req, res): Promise<void> => {
 
 router.post(
   "/academy/flashcards/:flashcardId/review",
+  requireCourseAccess,
   async (req, res): Promise<void> => {
     const params = ReviewAcademyFlashcardParams.safeParse(req.params);
     const body = ReviewAcademyFlashcardBody.safeParse(req.body);
@@ -664,6 +750,144 @@ router.patch(
       .where(eq(academyReviewItemsTable.id, item.id))
       .returning();
     res.json(UpdateInstructorReviewItemResponse.parse(presentReviewItem(saved)));
+  },
+);
+
+router.get(
+  "/academy/admin/users",
+  requireAdmin,
+  async (_req, res): Promise<void> => {
+    const accounts = await db
+      .select()
+      .from(academyUserRolesTable)
+      .orderBy(asc(academyUserRolesTable.createdAt));
+    res.json(
+      ListAdminAcademyUsersResponse.parse(accounts.map(presentAdminUser)),
+    );
+  },
+);
+
+router.patch(
+  "/academy/admin/users/:userId",
+  requireAdmin,
+  async (req, res): Promise<void> => {
+    const params = UpdateAdminAcademyUserParams.safeParse(req.params);
+    const body = UpdateAdminAcademyUserBody.safeParse(req.body);
+    if (!params.success || !body.success) {
+      res.status(400).json({ error: "Invalid account access update." });
+      return;
+    }
+
+    const [target] = await db
+      .select()
+      .from(academyUserRolesTable)
+      .where(eq(academyUserRolesTable.userId, params.data.userId))
+      .limit(1);
+    if (!target) {
+      res.status(404).json({ error: "Academy account not found." });
+      return;
+    }
+
+    const { trialStartedAt, trialExpiresAt } = body.data;
+    if (
+      trialStartedAt &&
+      trialExpiresAt &&
+      trialStartedAt.getTime() >= trialExpiresAt.getTime()
+    ) {
+      res.status(400).json({ error: "Trial expiry must be after its start date." });
+      return;
+    }
+    if (
+      body.data.subscriptionStatus === "trialing" &&
+      (body.data.planType !== "trial" || !trialStartedAt || !trialExpiresAt)
+    ) {
+      res.status(400).json({
+        error: "A trialing account needs a trial plan, start date, and expiry date.",
+      });
+      return;
+    }
+
+    if (target.role === "admin") {
+      const administrators = await db
+        .select({ userId: academyUserRolesTable.userId })
+        .from(academyUserRolesTable)
+        .where(eq(academyUserRolesTable.role, "admin"));
+      if (administrators.length <= 1) {
+        res.status(409).json({
+          error: "The last administrator cannot be changed to a learner or instructor.",
+        });
+        return;
+      }
+    }
+
+    const actor = getAcademyUser(res);
+    const [saved] = await db
+      .update(academyUserRolesTable)
+      .set({
+        role: body.data.role,
+        planType: body.data.planType,
+        subscriptionStatus: body.data.subscriptionStatus,
+        accessOverride: body.data.accessOverride,
+        trialStartedAt,
+        trialExpiresAt,
+        accessChangedAt: new Date(),
+        accessChangedBy: actor.userId,
+      })
+      .where(eq(academyUserRolesTable.userId, params.data.userId))
+      .returning();
+    res.json(UpdateAdminAcademyUserResponse.parse(presentAdminUser(saved)));
+  },
+);
+
+router.get(
+  "/academy/admin/export",
+  requireAdmin,
+  async (_req, res): Promise<void> => {
+    const [
+      units,
+      lessons,
+      activities,
+      flashcards,
+      dialectExamples,
+      reviewItems,
+      users,
+      progress,
+      attempts,
+      flashcardReviews,
+    ] = await Promise.all([
+      db.select().from(academyUnitsTable),
+      db.select().from(academyLessonsTable),
+      db.select().from(academyActivitiesTable),
+      db.select().from(academyFlashcardsTable),
+      db.select().from(academyDialectExamplesTable),
+      db.select().from(academyReviewItemsTable),
+      db.select().from(academyUserRolesTable),
+      db.select().from(academyProgressTable),
+      db.select().from(academyAttemptsTable),
+      db.select().from(academyFlashcardReviewsTable),
+    ]);
+    const exportedAt = new Date();
+    const backup = GetAdminAcademyExportResponse.parse({
+      schemaVersion: 1,
+      exportedAt: exportedAt.toISOString(),
+      units,
+      lessons,
+      activities,
+      flashcards,
+      dialectExamples,
+      reviewItems,
+      users,
+      progress,
+      attempts,
+      flashcardReviews,
+    });
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="guardianx-arabic-academy-backup-${exportedAt
+        .toISOString()
+        .replace(/[:.]/g, "-")}.json"`,
+    );
+    res.json(backup);
   },
 );
 

@@ -62,10 +62,54 @@ export const academyActivitiesTable = pgTable(
 export const academyUserRolesTable = pgTable("academy_user_roles", {
   userId: text("user_id").primaryKey(),
   role: text("role").notNull().default("student"),
+  email: text("email"),
+  displayName: text("display_name"),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
+  initialAdminGrantApplied: boolean("initial_admin_grant_applied")
+    .notNull()
+    .default(false),
+  showTransliteration: boolean("show_transliteration")
+    .notNull()
+    .default(true),
+  showTashkeel: boolean("show_tashkeel").notNull().default(true),
+  planType: text("plan_type").notNull().default("beta"),
+  subscriptionStatus: text("subscription_status").notNull().default("beta"),
+  trialStartedAt: timestamp("trial_started_at", { withTimezone: true }),
+  trialExpiresAt: timestamp("trial_expires_at", { withTimezone: true }),
+  accessOverride: text("access_override").notNull().default("inherit"),
+  billingProvider: text("billing_provider"),
+  externalCustomerId: text("external_customer_id"),
+  externalSubscriptionId: text("external_subscription_id"),
+  accessChangedAt: timestamp("access_changed_at", { withTimezone: true }),
+  accessChangedBy: text("access_changed_by"),
 });
+
+export const academyDialectExamplesTable = pgTable(
+  "academy_dialect_examples",
+  {
+    id: text("id").primaryKey(),
+    unitId: text("unit_id")
+      .notNull()
+      .references(() => academyUnitsTable.id),
+    dialect: text("dialect").notNull(),
+    arabic: text("arabic").notNull(),
+    transliteration: text("transliteration").notNull(),
+    english: text("english").notNull(),
+    usageNote: text("usage_note").notNull(),
+    sequence: integer("sequence").notNull().default(0),
+  },
+  (table) => [
+    index("academy_dialect_examples_unit_sequence_idx").on(
+      table.unitId,
+      table.sequence,
+    ),
+  ],
+);
 
 export const academyProgressTable = pgTable(
   "academy_progress",
