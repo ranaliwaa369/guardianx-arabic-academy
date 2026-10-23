@@ -21,6 +21,7 @@ import {
 import type { AcademyActivity, AcademyFlashcard, AcademyLesson, AdminAcademyUser, AdminAcademyUserUpdate, InstructorReviewItem } from '@workspace/api-client-react';
 import { Link, Redirect, Route, Switch, Router as WouterRouter, useLocation, useParams } from 'wouter';
 import NotFound from '@/pages/not-found';
+import { foundationsUnit1 } from "@/content/foundations-unit1";
 import './index.css';
 import './academy.css';
 
@@ -253,6 +254,7 @@ function AppShell({ children, active }: { children: ReactNode; active: string })
     <div className="nav-section-label">YOUR LEARNING</div>
     <Link href="/dashboard" className={cx('side-link', active === 'dashboard' && 'selected')} onClick={() => setMobileOpen(false)}><Compass size={18} /> Overview</Link>
     <Link href="/unit/greetings" className={cx('side-link', active === 'unit' && 'selected')} onClick={() => setMobileOpen(false)}><BookOpen size={18} /> Learning path</Link>
+    <Link href="/unit/foundations" className={cx('side-link', active === 'unit' && 'selected')} onClick={() => setMobileOpen(false)}><BookOpen size={18} /> Arabic Foundations</Link>
     <Link href="/flashcards" className={cx('side-link', active === 'flashcards' && 'selected')} onClick={() => setMobileOpen(false)}><Layers3 size={18} /> Vocabulary</Link>
     {isStaff && <><div className="nav-section-label nav-spaced">TEACHING</div><Link href="/instructor/review" className={cx('side-link', active === 'review' && 'selected')} onClick={() => setMobileOpen(false)}><CheckCircle2 size={18} /> Review queue</Link></>}
     {dash.data?.role === 'admin' && <Link href="/admin/access" className={cx('side-link', active === 'admin' && 'selected')} onClick={() => setMobileOpen(false)}><LockKeyhole size={18} /> Account access</Link>}
@@ -286,12 +288,14 @@ function DashboardPage() {
       const p = progress.data?.find((entry) => entry.lessonId === item.id);
       return <Link href={`/lesson/${item.id}`} className="mini-lesson" key={item.id} data-testid={`link-lesson-${item.id}`}><span className={cx('mini-lesson-status', p?.completed && 'done')}>{p?.completed ? <Check size={13} /> : String(i + 1).padStart(2, '0')}</span><span><b>{item.title}</b><small>{item.durationMinutes} min · {item.section}</small></span><ArrowRight size={15} /></Link>;
     })}</div><Link href="/unit/greetings" className="card-foot-link">View the whole learning path <ArrowRight size={15} /></Link></section>
+    <Link href="/unit/foundations" className={cx('side-link', active === 'unit' && 'selected')} onClick={() => setMobileOpen(false)}><BookOpen size={18} /> Arabic Foundations</Link>
     <aside className="dashboard-side"><div className="streak-card"><span className="streak-icon"><Flame size={20} /></span><div><span className="eyebrow">SHOWING UP MATTERS</span><h3>{dashboard.data.currentStreakDays} days</h3><p>Your learning rhythm is building.</p></div><span className="streak-dash" /></div><Link href="/flashcards" className="review-card"><span className="review-icon"><Layers3 size={18} /></span><span className="review-text"><b>Vocabulary review</b><small>{dashboard.data.dueReviews} cards ready when you are</small></span><ArrowRight size={17} /></Link><div className="daily-note"><Sun size={17} className="note-sun" /><div><span className="eyebrow">A NOTE ON GREETINGS</span><p>In Arabic, a greeting is more than hello — it is a wish for peace.</p></div><span className="arabic note-ar" dir="rtl">سلام</span></div></aside></div>
   </div></AppShell>;
 }
 
-function UnitPage() {
-  const unit = useGetAcademyUnit({ query: { queryKey: getGetAcademyUnitQueryKey(), retry: false } });
+function UnitPage({ unitOverride }: { unitOverride?: any } = {}) {
+  const unitQuery = useGetAcademyUnit({ query: { queryKey: getGetAcademyUnitQueryKey(), retry: false } });
+  const unit = unitOverride ? { data: unitOverride, isLoading: false, isError: false } : unitQuery;
   const progress = useListLessonProgress({ query: { queryKey: getListLessonProgressQueryKey(), retry: false } });
   if (unit.isLoading || progress.isLoading) return <LoadingPage />;
   if (unit.isError || progress.isError || !unit.data) return <ErrorPage title="The learning path isn't available right now" retry={() => { void unit.refetch(); void progress.refetch(); }} />;
@@ -351,6 +355,7 @@ function LessonPage() {
   };
   return <AppShell active="lesson"><main className="lesson-page">
     <div className="lesson-back-row"><Link href="/unit/greetings" className="back-link"><ArrowLeft size={15} /> {unit.data.title}</Link><span className="lesson-counter">LESSON {String(lesson.sequence).padStart(2, '0')} <i>/</i> {unit.data.lessons.length}</span></div>
+    <Link href="/unit/foundations" className={cx('side-link', active === 'unit' && 'selected')} onClick={() => setMobileOpen(false)}><BookOpen size={18} /> Arabic Foundations</Link>
     <div className="lesson-head"><div><p className="eyebrow">{lesson.section} <span className="eyebrow-line" /></p><h1 className="display">{lesson.title}</h1><p className="lesson-description">{lesson.description}</p></div><span className="lesson-time"><Clock3 size={15} /> {lesson.durationMinutes} min</span></div>
     <div className="lesson-progress-row"><div className="lesson-progress-track">{stepOrder.map((item, i) => <span key={item} className={i <= index ? 'active' : ''} />)}</div><span>{step.replace(/^\w/, (x) => x.toUpperCase())}</span></div>
     <div className="lesson-layout"><section className="lesson-main-card">
@@ -422,6 +427,7 @@ function FlashcardsPage() {
       : cards.isError ? <ErrorPage title="Your vocabulary isn't available right now" retry={() => void cards.refetch()} />
       : cards.data?.length ? <div className="flashcard-grid">{cards.data.map((card, i) => <Flashcard key={card.id} card={card} number={i + 1} revealed={revealed === card.id} setRevealed={() => setRevealed(revealed === card.id ? null : card.id)} status={reviewed[card.id]} isPending={review.isPending && review.variables?.flashcardId === card.id} review={(remembered) => submitReview(card, remembered)} />)}</div>
       : <div className="empty-vocab"><span className="empty-vocab-icon"><Search size={22} /></span><h2>No words found</h2><p>Try a different search, or explore the lessons to meet new vocabulary.</p><Link href="/unit/greetings" className="text-link">Browse your learning path <ArrowRight size={15} /></Link></div>}
+    <Link href="/unit/foundations" className={cx('side-link', active === 'unit' && 'selected')} onClick={() => setMobileOpen(false)}><BookOpen size={18} /> Arabic Foundations</Link>
   </main></AppShell>;
 }
 
@@ -593,6 +599,7 @@ function Router() {
       <Route path="/admin/access">{() => <ProtectedRoute admin><AdminAccessPage /></ProtectedRoute>}</Route>
       <Route path="/about-author">{() => <InfoPage kind="author" />}</Route>
       <Route path="/copyright">{() => <InfoPage kind="copyright" />}</Route>
+      <Route path="/unit/foundations">{() => <ProtectedRoute accessRequired><UnitPage unitOverride={foundationsUnit1} /></ProtectedRoute>}</Route>
       <Route component={NotFound} />
     </Switch>
   </ClerkProvider>;
